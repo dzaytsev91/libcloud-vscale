@@ -19,12 +19,15 @@ from libcloud.utils.py3 import httplib
 
 
 class VscaleJsonResponse(JsonResponse):
-    def parse_error(self):
+    def parse_error(self) -> str:
         http_code = int(self.status)
         if http_code == httplib.FORBIDDEN:
             raise InvalidCredsError("Invalid credentials")
 
         body = super().parse_error()
+
+        if http_code == httplib.INTERNAL_SERVER_ERROR:
+            return body["error"]["message"]
 
         if http_code in (httplib.CONFLICT, httplib.NOT_FOUND):
             raise ProviderError(value=body["error"], http_code=http_code)
@@ -167,6 +170,10 @@ class VscaleDriver(NodeDriver):
             nodes.append(node)
 
         return nodes
+
+    def destroy_node(self, node: Node) -> bool:
+        response = self.connection.request(f"v1/scalets/{node.id}", method="DELETE")
+        return response.status == httplib.OK
 
 
 class VscaleDns(DNSDriver):

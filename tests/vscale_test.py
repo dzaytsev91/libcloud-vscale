@@ -3,7 +3,9 @@ import os
 
 import pytest
 import vcr
+from libcloud.common.exceptions import BaseHTTPError
 from libcloud.common.types import InvalidCredsError, ProviderError
+from libcloud.compute.base import Node
 from libcloud.dns.base import Record, Zone
 from libcloud.dns.types import RecordAlreadyExistsError, RecordDoesNotExistError, RecordType, ZoneDoesNotExistError, ZoneError
 
@@ -272,3 +274,12 @@ def test_compute_create_pair():
     assert kp.name == name
     assert kp.public_key == kp.public_key
     assert kp.extra["id"] > 0
+
+
+@vcr.use_cassette("./tests/fixtures/compute_destroy_node_not_exist.yaml", filter_headers=["X-Token"])
+def test_compute_destroy_node():
+    conn = VscaleDriver(key=os.getenv("VSCALE_TOKEN"))
+    node = Node(123567890, name=None, state=None, public_ips=None, private_ips=None, driver=conn)
+
+    with pytest.raises(BaseHTTPError, match="Internal server error"):
+        conn.destroy_node(node)
